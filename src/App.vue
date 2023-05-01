@@ -1,30 +1,119 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
+<script setup lang="ts">
+import Queue from './components/Queue.vue';
+import Block from './components/Block.vue';
+import { nextTick, reactive, ref } from 'vue';
+const speed = ref(0.1)
+class Task {
+  progress = 0
+  aborting = 0
+  opacity = 0
+  constructor(public type=0){
+  }
+  forward(){
+    if(this.progress<100){
+      this.progress+=speed.value
+      return false
+    }
+    return true
+  }
+  abort(){
+    this.aborting = Date.now()
+  }
+}
+const queue = reactive<Task[]>([new Task(),new Task(1),new Task(2)])
+const move = ()=>{
+  if(queue.length) {
+    if (!queue[0].aborting) {
+      const done = queue[0].forward()
+      if(done){
+        queue.shift()
+      }
+    }
+    queue.forEach(t=>{
+      if(t.aborting>0){
+        t.opacity = (500-Date.now()+t.aborting)/500
+        if(t.opacity<=0)
+        queue.splice(queue.indexOf(t),1)
+      }
+    })
+  }
+  requestAnimationFrame(move)
+}
+move()
+function add(type:number) {
+  const nt = new Task(type)
+  if(queue.length==1){
+    switch(queue[0].type){
+      case 0:
+      case 1:
+        if(type==0){
+          nt.abort()
+        }
+        break
+      case 2:
+        if(type!=0){
+          nt.abort()
+        }
+    }
+  } else if(queue.length>1) {
+    switch(type){
+      case 2:
+        queue.forEach((t,i)=>i&&t.abort())
+        if(queue[0].type==2)nt.abort()
+        break
+      case 1:
+        if(queue[queue.length-1].type==1){
+          nt.abort()
+        } else if(queue[queue.length-1].type==2){
+          nt.abort()
+        }
+        break
+      case 0:
+        switch(queue[queue.length-1].type){
+          case 1:
+            nt.abort();
+            break;
+          case 0:
+            queue[queue.length-1].abort()
+            break;
+          case 2:
+            queue[queue.length-1].abort()
+            nt.abort();
+            break
+        }
+    }
+  }
+  queue.push(nt)
+}
 </script>
 
 <template>
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <Queue>
+    <Block v-for="item in queue" v-bind="item">
+
+    </Block>
+  </Queue>
+  <div class="buttons">
+    <Block :type="0" @click="add(0)"></Block>
+    <Block :type="1" @click="add(1)"></Block>
+    <Block :type="2" @click="add(2)"></Block>
+    <button @click="speed+=0.1">speed up</button>
+    <button @click="speed>0?speed-=0.1:void 0">speed down</button>
   </div>
-  <HelloWorld msg="Vite + Vue" />
+  
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style>
+body {
+  background-color: gray;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+button {
+  margin: 5px;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+.buttons {
+  display: flex;
+  position: fixed;
+  bottom: 10px;
+  right: 0;
 }
 </style>
