@@ -20,7 +20,7 @@ class Task {
     this.aborting = Date.now()
   }
 }
-const queue = reactive<Task[]>([new Task(),new Task(1),new Task(2)])
+const queue = reactive<Task[]>([])
 const move = ()=>{
   if(queue.length) {
     if (!queue[0].aborting) {
